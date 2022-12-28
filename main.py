@@ -14,7 +14,7 @@ import copy
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--train",action='store_true',help='whether to train a DNN model')
-parser.add_argument("--nonideal",action='store_true',help='whether to add non-ideal characteristics')
+parser.add_argument("--nonideal",type=str,default=None,help='Add non-ideal characteristics: device|endurance|retention|finite|nonlinear')
 
 args = parser.parse_args()
 
@@ -51,7 +51,7 @@ def train(epoch, model, optimizer, scheduler, criterion, train_loader, test_load
             best_acc = acc
             torch.save(model.state_dict(),'best_model.pt')
             
-def MDNN(model,nonideal=False):
+def MDNN(model,nonideal=None):
     reference_memristor = memtorch.bh.memristor.VTEAM
     reference_memristor_params = {'time_series_resolution': 1e-10}
     visualize(reference_memristor,reference_memristor_params)
@@ -70,12 +70,55 @@ def MDNN(model,nonideal=False):
                           quant_method='linear')
     patched_model.tune_()
     
-    if nonideal:
+    if nonideal=='device':
+        print('Consider DeviceFaults.')
         patched_model = apply_nonidealities(copy.deepcopy(patched_model),
                                         non_idealities=[memtorch.bh.nonideality.NonIdeality.DeviceFaults],
                                         lrs_proportion=0.25,
                                         hrs_proportion=0.10,
                                         electroform_proportion=0)
+    
+    elif nonideal=='endurance':
+        print('Consider Endurance.')
+        patched_model = apply_nonidealities(copy.deepcopy(patched_model),
+                                  non_idealities=[memtorch.bh.nonideality.NonIdeality.Endurance],
+                                  x=1e4,
+                                  endurance_model=memtorch.bh.nonideality.endurance_retention_models.model_endurance_retention,
+                                  endurance_model_kwargs={
+                                        "operation_mode": memtorch.bh.nonideality.endurance_retention_models.OperationMode.sudden,
+                                        "p_lrs": [1, 0, 0, 0],
+                                        "stable_resistance_lrs": 100,
+                                        "p_hrs": [1, 0, 0, 0],
+                                        "stable_resistance_hrs": 1000,
+                                        "cell_size": 10,
+                                        "temperature": 350,
+                                  })
+    
+    elif nonideal.lower()=='retention':
+        print('Consider Retention.')
+        patched_model = apply_nonidealities(copy.deepcopy(patched_model),
+                                  non_idealities=[memtorch.bh.nonideality.NonIdeality.Retention],
+                                  time=1e3,
+                                  retention_model=memtorch.bh.nonideality.endurance_retention_models.model_conductance_drift,
+                                  retention_model_kwargs={
+                                        "initial_time": 1,
+                                        "drift_coefficient": 0.1,
+                                  })
+        
+    elif nonideal.lower()=='finite':
+        print('Consider FiniteConductanceStates.')
+        patched_model = apply_nonidealities(copy.deepcopy(patched_model),
+                                  non_idealities=[memtorch.bh.nonideality.NonIdeality.FiniteConductanceStates],
+                                  conductance_states=5)  
+        
+    elif nonideal.lower()=='nonlinear':
+        print('Consider NonLinear.')
+        patched_model = apply_nonidealities(copy.deepcopy(patched_model),
+                                  non_idealities=[memtorch.bh.nonideality.NonIdeality.NonLinear],
+                                  simulate=True)          
+    
+    else:
+        print('Not Consider the nonideal characteristics')
         
     return patched_model
 
