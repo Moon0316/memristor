@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description='1T1R Training')
 parser.add_argument('--lr', type=float,default=1e-5,help ='learning rate')
 parser.add_argument('--vol_base', type=float,default=0.15)
 parser.add_argument('--beta', type=float,default=1.5)
-parser.add_argument('--lrs', type=float,default=4e-5,help ='Initialized weight:LRS')
+parser.add_argument('--lrs', type=float,default=3e-5,help ='Initialized weight:LRS')
 parser.add_argument('--batch_size',type=int,default=100)
 parser.add_argument('--right_activation_gt',type=float,default=1)
 parser.add_argument('--wrong_activation_gt',type=float,default=0.)
@@ -66,23 +66,12 @@ def update_weight(voltage,weight,activation_gt,use_sign=False):
     current = torch.mm(voltage,weight) #(B,OUT_DIM)
     activation = torch.tanh(BETA*current) #(B,OUT_DIM)
     grad = (1-activation*activation)*BETA
-    # print('grad')
-    # print(torch.max(grad))
     hidden = (activation_gt-activation)*grad #(B,OUT_DIM)
-    # print('hid')
-    # print(torch.max(hidden))
-    # print('vol')
-    # print(torch.max(voltage))
     delta = torch.bmm(voltage.unsqueeze(-1),hidden.unsqueeze(1)) #(B,INPUT,OUTPUT)
-    # print('delta')
-    # print(torch.max(delta))
     if use_sign:
         delta_weight = LR*torch.sign(delta.sum(dim=0))
     else:
         delta_weight = LR*delta.sum(dim=0)
-    # print('delta_weight')
-    # print(torch.max(delta_weight))
-    # print(torch.max(weight + delta_weight))
 
     return weight + delta_weight
     
