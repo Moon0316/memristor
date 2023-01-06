@@ -1,12 +1,14 @@
 import torch
 from torch import nn, optim
+import torchvision
+import torchvision.transforms as transforms
 import memtorch
 from memtorch.utils import LoadMNIST
 from memtorch.mn.Module import patch_model
 from memtorch.map.Input import naive_scale
 from memtorch.map.Parameter import naive_map
 from memtorch.bh.nonideality.NonIdeality import apply_nonidealities
-from model import DNN
+from model import minist, cifar10
 from plot import visualize
 from tqdm import tqdm
 import argparse
@@ -14,7 +16,12 @@ import copy
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--train",action='store_true',help='whether to train a DNN model')
+parser.add_argument("--lr", type=float, default=1e-2)
+parser.add_argument("--step_size", type=int, default=2)
+parser.add_argument("--epoch", type=int, default=10)
+parser.add_argument("--batch_size", type=int, default=256)
 parser.add_argument("--nonideal",type=str,default=None,help='Add non-ideal characteristics: device|endurance|retention|finite|nonlinear')
+parser.add_argument("--dataset", type=str, default='minist', help='type of dataset: minist|cifar10')
 
 args = parser.parse_args()
 
@@ -30,7 +37,7 @@ def test(model,test_loader):
 
     return 100. * float(correct) / float(len(test_loader.dataset))
 
-def train(epoch, model, optimizer, scheduler, criterion, train_loader, test_loader):    
+def train(args, epoch, model, optimizer, scheduler, criterion, train_loader, test_loader):    
     best_acc = 0
     for i in range(epoch):
         model.train()
@@ -46,11 +53,12 @@ def train(epoch, model, optimizer, scheduler, criterion, train_loader, test_load
             pbar.set_description('EPOCH:{}, LOSS:{}, LR:{}'.format(e,loss,optimizer.param_groups[0]['lr']))
         scheduler.step()
         acc = test(model,test_loader)
-        print('Test Accurecy: %2.2f%%' % acc)
+        print('Test Accuracy: %2.2f%%' % acc)
         if acc > best_acc:
             best_acc = acc
-            torch.save(model.state_dict(),'best_model.pt')
-            
+            print('EPOCH:{}, save best model!'.format(e))
+            torch.save(model.state_dict(), '{}_best_model.pt'.format(args.dataset))          
+         
 def MDNN(model,nonideal=None):
     reference_memristor = memtorch.bh.memristor.VTEAM
     reference_memristor_params = {'time_series_resolution': 1e-10}
@@ -94,7 +102,7 @@ def MDNN(model,nonideal=None):
                                         "temperature": 350,
                                   })
     
-    elif nonideal.lower()=='retention':
+    elif nonideal=='retention':
         print('Consider Retention.')
         patched_model = apply_nonidealities(copy.deepcopy(patched_model),
                                   non_idealities=[memtorch.bh.nonideality.NonIdeality.Retention],
@@ -105,13 +113,13 @@ def MDNN(model,nonideal=None):
                                         "drift_coefficient": 0.1,
                                   })
         
-    elif nonideal.lower()=='finite':
+    elif nonideal=='finite':
         print('Consider FiniteConductanceStates.')
         patched_model = apply_nonidealities(copy.deepcopy(patched_model),
                                   non_idealities=[memtorch.bh.nonideality.NonIdeality.FiniteConductanceStates],
                                   conductance_states=5)  
         
-    elif nonideal.lower()=='nonlinear':
+    elif nonideal=='nonlinear':
         print('Consider NonLinear.')
         patched_model = apply_nonidealities(copy.deepcopy(patched_model),
                                   non_idealities=[memtorch.bh.nonideality.NonIdeality.NonLinear],
@@ -124,14 +132,36 @@ def MDNN(model,nonideal=None):
 
 
 def main(args):
-    model = DNN().to(device)
-    batch_size=256
-    train_loader, _, test_loader = LoadMNIST(batch_size=batch_size, validation=False)
+    if args.dataset == 'minist':
+        model = minist().to(device)
+    elif args.dataset == 'cifar10':
+        model = cifar10().to(device)
+    
+    batch_size=args.batch_size
+    
+    if args.dataset=='minist':
+        train_loader, _, test_loader = LoadMNIST(batch_size=batch_size, validation=False)
+    elif args.dataset=='cifar10':
+        transform_train = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
+        ])
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
+        ])
+        train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=False, transform=transform_train)
+        train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
+        test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transform_test)
+        test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=False, num_workers=1)
+    
     if args.train:
         # hyper parameters
-        lr = 1e-2
-        step_size=2
-        epoch=10       
+        lr = args.lr
+        step_size= args.step_size
+        epoch= args.epoch     
 
         # training preparation  
         optimizer = optim.Adam(model.parameters(),lr=lr)
@@ -139,17 +169,17 @@ def main(args):
         criterion = nn.CrossEntropyLoss()
         
         # train
-        train(epoch, model, optimizer, scheduler, criterion, train_loader, test_loader)
+        train(args, epoch, model, optimizer, scheduler, criterion, train_loader, test_loader)
     
     # load best model
-    model.load_state_dict(torch.load('best_model.pt'))
+    model.load_state_dict(torch.load('{}_best_model.pt'.format(args.dataset)))
     acc=test(model,test_loader)
-    print('DNN Test Accurecy: %2.2f%%' % acc)
+    print('DNN Test Accuracy: %2.2f%%' % acc)
     
     # conversion to MDNN
     patched_model = MDNN(model,args.nonideal)
     acc=test(patched_model,test_loader)
-    print('MDNN Test Accurecy: %2.2f%%' % acc)
+    print('MDNN Test Accuracy: %2.2f%%' % acc)
     
 
 if __name__ == '__main__':

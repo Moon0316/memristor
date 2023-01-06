@@ -1,2 +1,7 @@
 Tutorial.ipynb
 __pycache__/
+data/
+simulations/
+tmp*
+*.log
+*.pt
