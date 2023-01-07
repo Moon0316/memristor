@@ -13,7 +13,7 @@ class Mnist(object):
 
     def load_mnist(self,type):
 
-        data_dir = "./data"
+        data_dir = "./data/MNIST/raw"
         fd = open(os.path.join(data_dir, 'train-images-idx3-ubyte'))
         loaded = np.fromfile(file=fd , dtype=np.uint8)
 		
