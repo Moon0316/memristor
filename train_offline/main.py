@@ -3,16 +3,22 @@ from torch import nn, optim
 import torchvision
 import torchvision.transforms as transforms
 import memtorch
-from memtorch.utils import LoadMNIST
 from memtorch.mn.Module import patch_model
 from memtorch.map.Input import naive_scale
 from memtorch.map.Parameter import naive_map
 from memtorch.bh.nonideality.NonIdeality import apply_nonidealities
-from model import minist, cifar10
-from plot import visualize
+from model import mnist, cifar10
 from tqdm import tqdm
 import argparse
 import copy
+import os,sys
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BASE_DIR)
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR, "utils"))
+from load_mnist import MNIST_Loader
+
+from plot import visualize
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--train",action='store_true',help='whether to train a DNN model')
@@ -21,7 +27,7 @@ parser.add_argument("--step_size", type=int, default=2)
 parser.add_argument("--epoch", type=int, default=10)
 parser.add_argument("--batch_size", type=int, default=256)
 parser.add_argument("--nonideal",type=str,default=None,help='Add non-ideal characteristics: device|endurance|retention|finite|nonlinear')
-parser.add_argument("--dataset", type=str, default='minist', help='type of dataset: minist|cifar10')
+parser.add_argument("--dataset", type=str, default='mnist', help='type of dataset: mnist|cifar10')
 
 args = parser.parse_args()
 
@@ -57,7 +63,8 @@ def train(args, epoch, model, optimizer, scheduler, criterion, train_loader, tes
         if acc > best_acc:
             best_acc = acc
             print('EPOCH:{}, save best model!'.format(e))
-            torch.save(model.state_dict(), '{}_best_model.pt'.format(args.dataset))          
+            model_path = os.path.join(ROOT_DIR,'models')
+            torch.save(model.state_dict(), os.path.join(model_path,'{}_best_model.pt'.format(args.dataset)))   
          
 def MDNN(model,nonideal=None):
     reference_memristor = memtorch.bh.memristor.VTEAM
@@ -132,15 +139,15 @@ def MDNN(model,nonideal=None):
 
 
 def main(args):
-    if args.dataset == 'minist':
-        model = minist().to(device)
+    if args.dataset == 'mnist':
+        model = mnist().to(device)
     elif args.dataset == 'cifar10':
         model = cifar10().to(device)
     
     batch_size=args.batch_size
     
-    if args.dataset=='minist':
-        train_loader, _, test_loader = LoadMNIST(batch_size=batch_size, validation=False)
+    if args.dataset=='mnist':
+        train_loader, _, test_loader = MNIST_Loader(batch_size=batch_size, validation=False,)
     elif args.dataset=='cifar10':
         transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
@@ -152,9 +159,10 @@ def main(args):
             transforms.ToTensor(),
             transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
         ])
-        train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=False, transform=transform_train)
+       
+        train_set = torchvision.datasets.CIFAR10(root=os.path.join(ROOT_DIR,'data'), train=True, download=False, transform=transform_train)
         train_loader = torch.utils.data.DataLoader(train_set, batch_size=args.batch_size, shuffle=True, num_workers=1)
-        test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transform_test)
+        test_set = torchvision.datasets.CIFAR10(root=os.path.join(ROOT_DIR,'data'), train=False, download=False, transform=transform_test)
         test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.batch_size, shuffle=False, num_workers=1)
     
     if args.train:
@@ -172,7 +180,8 @@ def main(args):
         train(args, epoch, model, optimizer, scheduler, criterion, train_loader, test_loader)
     
     # load best model
-    model.load_state_dict(torch.load('{}_best_model.pt'.format(args.dataset)))
+    model_path = os.path.join(ROOT_DIR,'models')
+    model.load_state_dict(torch.load(os.path.join(model_path,'{}_best_model.pt'.format(args.dataset))))
     acc=test(model,test_loader)
     print('DNN Test Accuracy: %2.2f%%' % acc)
     

@@ -1,8 +1,14 @@
 import numpy as np 
 import torch as torch
-from load_mnist import process_data
 import argparse
 import tqdm
+import sys,os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BASE_DIR)
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR, "utils"))
+
+from load_mnist import process_data
 
 parser = argparse.ArgumentParser(description='1T1R Training')
 
@@ -15,7 +21,7 @@ parser.add_argument('--right_activation_gt',type=float,default=1)
 parser.add_argument('--wrong_activation_gt',type=float,default=0.)
 parser.add_argument('--input_dim',type=int,default=784)
 parser.add_argument('--output_dim',type=int,default=10)
-parser.add_argument('--epoch_num',type=int,default=10)
+parser.add_argument('--epoch_num',type=int,default=1)
 parser.add_argument('--seed',type=int,default=42)
 parser.add_argument('--use_sign',action='store_true')
 parser.add_argument('--reverse',action='store_true')
