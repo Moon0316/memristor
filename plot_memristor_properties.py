@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 
 import numpy as np
+import torch
 
 
 def plot_mem_fluctuation(x_data, y_data, x_label: str, y_label: str, title: str, save_path: str, ylim=None,
@@ -34,7 +35,7 @@ if __name__ == '__main__':
         'k_off': 4.03e-8, 'k_on': -80,
         'x_off': 1e-8, 'x_on': 0}
     eps = 1e-12  # prevent divide by zero
-    memristor = reference_memristor(time_series_resolution=2e-5,**reference_memristor_params)
+    memristor = reference_memristor(time_series_resolution=2e-5, **reference_memristor_params)
 
     voltage, current = memristor.plot_hysteresis_loop(
         duration=2,
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     plot_mem_fluctuation(voltage, current, "Voltage (V)", "Current (A)", "Hysteresis Loop-omega=1000pi",
                          "memristor-hys-loop-high-I-U.png")
     plot_mem_fluctuation(voltage, R, "Voltage (V)", "Resistance (Ohm)", "Hysteresis Loop-omega=1000pi",
-                         "memristor-hys-loop-high-R-U.png",ylim=[0,130])
+                         "memristor-hys-loop-high-R-U.png", ylim=[0, 130])
 
     memristor = reference_memristor(**reference_memristor_params)
     voltage, current = memristor.plot_bipolar_switching_behaviour(
@@ -77,3 +78,30 @@ if __name__ == '__main__':
                          "memristor-bipolar-loop-I-U.png", use_line=True, log_scale=True)
     plot_mem_fluctuation(voltage, R, "Voltage (V)", "Resistance (Ohm)", "Bipolar Loop",
                          "memristor-bipolar-loop-R-U.png", use_line=True)
+
+    # Supplementary
+
+    reference_memristor_params = {'time_series_resolution': 1e-10, 'r_on': 1600, 'r_off': 0.1}
+    memristor = reference_memristor(**reference_memristor_params)
+    # voltage, current = memristor.plot_bipolar_switching_behaviour(
+    #
+    #     log_scale=True,
+    #     return_result=True
+    # )
+    T = 2e-8
+    N = 500
+    x = np.linspace(0, T, N + 1)  # eliminate minor error on R
+    delta_t = T / N
+    v = np.sin(np.pi * 1e8 * x)
+    v[v > 0] = 1
+    v[v < 0] = -0.3
+    i = memristor.simulate(torch.FloatTensor(v), True)
+
+    slices = np.abs(v) > eps  # for R=0 bad ones
+    v, i = v[slices], i[slices]
+    voltage, current = v, i
+    R = voltage / (current + eps)
+    plot_mem_fluctuation(voltage, np.abs(current), "Voltage (V)", "Current (A)", "Bipolar Loop",
+                         "memristor-loop-I-U-sup.png", use_line=True, log_scale=True)
+    plot_mem_fluctuation(voltage, R, "Voltage (V)", "Resistance (Ohm)", "Bipolar Loop",
+                         "memristor-loop-R-U-sup.png", use_line=True)
