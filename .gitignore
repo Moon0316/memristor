@@ -4,4 +4,3 @@ data/
 simulations/
 tmp*
 *.log
-*.pt
