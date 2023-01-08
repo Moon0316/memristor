@@ -22,9 +22,11 @@ models文件夹下保存着离线训练好的模型"mnist_best_model.pt","cifar1
 4. 设置参数`--dataset <dataset name>`可以选择用于训练/测试模型的数据集，支持的类型包括`mnist|cifar10`
 
 
+### 忆阻阵列在线训练——基于充放电机制
+运行`python train_online1/single_layer.py`可运行模拟忆阻阵列在单层感知机上的训练过程
+
+
 ### 忆阻阵列在线训练——基于双向电导连续调制
 
 运行`python train_online2/main.py --use_sign` 即可运行1T1R阵列模拟算法，器件相关参数以及超参数可以通过args修改。--add noise加入可以使得参数更新时加上随机噪声，--sigma可用来控制加入噪声方差。
 
-### 忆阻阵列在线训练——基于充放电机制
-运行`python train_online1/single_layer.py`可运行模拟忆阻阵列在单层感知机上的训练过程
