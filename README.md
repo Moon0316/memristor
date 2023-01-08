@@ -8,10 +8,9 @@
 
 2. visualize文件中`ideal_mem_resistor.py`：实现了理想忆阻器线性漂移子模型并测试了不同频率正弦激励下的忆阻器图线。
 
-
 ### 基于Memtorch 离线训练
 
-models文件夹下保存着离线训练好的模型"mnist_best_model.pt","cifar10_best_model.pt"，由于文件大小限制，在本repo中我们并未将模型上传，可自行上传训练好的模型或与我们联系。提交的压缩文件中已包含。
+models文件夹下保存着我们提供的离线训练好的模型"mnist_best_model.pt","cifar10_best_model.pt"，你也可以提供自己的模型。
 
 1. 运行`python train_offline/main.py`即可将`best_model.pt`存的DNN转成MDNN并分别测试DNN和MDNN的精度，但是这种模式下并不考虑非理想特性。
 
