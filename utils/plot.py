@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import memtorch
+import os
 
 def visualize(reference_memristor,reference_memristor_params):
     memristor = reference_memristor(**reference_memristor_params)
@@ -9,7 +10,7 @@ def visualize(reference_memristor,reference_memristor_params):
     plt.xlabel("Voltage (V)")
     plt.ylabel("Current (A)")
     plt.plot(voltage_signal, current_signal)
-    plt.savefig('Hysteresis_Loop.png')
+    plt.savefig(os.path.join('train_offline','Hysteresis_Loop.png'))
     plt.close()
     
     voltage_signal, current_signal = memristor.plot_bipolar_switching_behaviour(return_result=True)
@@ -18,7 +19,7 @@ def visualize(reference_memristor,reference_memristor_params):
     plt.xlabel("Voltage (V)")
     plt.ylabel("|Current (A)|")
     plt.plot(voltage_signal, abs(current_signal))
-    plt.savefig('Bipolar_Switching_Behaviour.png')
+    plt.savefig(os.path.join('train_offline','Bipolar_Switching_Behaviour.png'))
     
 if __name__=='__main__':
     reference_memristor = memtorch.bh.memristor.Stanford_PKU
