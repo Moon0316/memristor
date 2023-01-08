@@ -11,6 +11,8 @@
 
 ### 基于Memtorch 离线训练
 
+models文件夹下保存着离线训练好的模型"mnist_best_model.pt","cifar10_best_model.pt"，由于文件大小限制，在本repo中我们并未将模型上传，可自行上传训练好的模型或与我们联系。提交的压缩文件中已包含。
+
 1. 运行`python train_offline/main.py`即可将`best_model.pt`存的DNN转成MDNN并分别测试DNN和MDNN的精度，但是这种模式下并不考虑非理想特性。
 
 2. 如果要考虑非理想特性，可以添加参数`--nonideal <nonideal type>`,支持的输入包括`device|endurance|retention|finite|nonlinear`
@@ -18,6 +20,7 @@
 3. 如果要重新训练DNN，可以添加参数`--train`, 训练参数还有`--lr`,`--step_size`,`--epoch`,`--batch_size`
 
 4. 设置参数`--dataset <dataset name>`可以选择用于训练/测试模型的数据集，支持的类型包括`mnist|cifar10`
+
 
 ### 忆阻阵列在线训练——基于双向电导连续调制
 
